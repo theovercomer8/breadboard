@@ -539,7 +539,7 @@ def process_img(obj):
 
     # Add enabled CLIP flavors to tag list
     if clip_use_artist or clip_use_flavor or clip_use_medium or clip_use_movement or clip_use_trending:
-        tags = ci.interrogate(img, new_caption)
+        tags = ci.interrogate(new_caption,img)
         for tag in tags:
             out_tags.append(tag)
     else:
