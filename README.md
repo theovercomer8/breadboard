@@ -7,7 +7,7 @@ This is an untested early alpha. Use at your own risk.
 Add your image dataset to the Connected Folders section in settings and Re-Index
 It will add any existing caption files to the database, allowing searchability.
 Captions are now searchable, and images can be filtered by whether they have a caption or not:
-https://github.com/theovercomer8/breadboard/raw/main/imgs/search.png
+
 ![imgs/search.png](imgs/search.png)
 
 ### Caption Wizard
