@@ -1,7 +1,8 @@
-torch
-torchvision
 Pillow
 requests
 tqdm
 open_clip_torch
 blip-vit
+--extra-index-url https://download.pytorch.org/whl/cu117
+torch
+torchvision
