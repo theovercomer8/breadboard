@@ -221,10 +221,10 @@ class CaptionWizard {
         this.worker.onmessage = async (e) => {
             if (e.data.res.length > 0) {
                 if (this.selected.length > 0) {
-                    let data = e.data.res.some((d) => {
+                    let data = e.data.res.filter((d) => {
                         return this.selected.includes(d.file_path)
                     })
-                    await window.electronAPI.captionBatch(data.res)
+                    await window.electronAPI.captionBatch(data)
                     this.offset += 1
                     await this.worker.postMessage({ query: this.app.query, sorter: this.app.navbar.sorter, offset: this.offset })
                 } else {
