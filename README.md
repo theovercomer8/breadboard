@@ -23,7 +23,7 @@ It will apply captioning to any selected images, or all images visible within th
 - **Max Caption Length** Maximum tags to use
 - **Existing Caption Action** How to handle existing caption if present
 - **GIT Pass** Whether to perform a pass using Microsoft's GIT model
-- **GIT Fail Phrases ** Don't use GIT caption if it contains one of these phrases
+- **GIT Fail Phrases** Don't use GIT caption if it contains one of these phrases
 - **BLIP Pass** Caption using BLIP model if selected and/or GIT fail phrase detected
 - **BLIP Beams** Number of beams for BLIP pass
 - **CLIP Min/Max Length** Number of tags to use from CLIP
