@@ -1,4 +1,4 @@
-const {app, shell, BrowserWindow, ipcMain, dialog, session, clipboard } = require('electron')
+const { app, shell, BrowserWindow, ipcMain, dialog, session, clipboard } = require('electron')
 const { fdir } = require("fdir");
 const contextMenu = require('electron-context-menu');
 const path = require('path')
@@ -14,6 +14,19 @@ const Updater = require('./updater/index')
 const GM = require('./crawler/gm')
 const gm = new GM()
 const is_mac = process.platform.startsWith("darwin")
+const { PythonShell } = require('python-shell');
+const unhandled = require('electron-unhandled');
+
+unhandled({
+  logger: (e) => {
+    console.error("UNHANDLED ERROR", e);
+  },
+  showDialog: false,
+
+});
+var captionShell
+var captionsToUpdate = []
+
 contextMenu({ showSaveImageAs: true });
 var mainWindow;
 var theme = "default";
@@ -39,15 +52,15 @@ const titleBarOverlay = (theme) => {
     }
   }
 }
-function createWindow (port) {
+function createWindow(port) {
   mainWindow = new BrowserWindow({
-		titleBarStyle : "hidden",
-		titleBarOverlay : titleBarOverlay(),
+    titleBarStyle: "hidden",
+    titleBarOverlay: titleBarOverlay(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js')
     },
   })
-//  mainWindow.webContents.openDevTools()
+  //  mainWindow.webContents.openDevTools()
   mainWindow.loadURL(`http://localhost:${port}`)
   mainWindow.maximize();
 
@@ -91,7 +104,7 @@ app.whenReady().then(async () => {
     console.log("update check error", e)
   })
 
-//  session.defaultSession.clearStorageData()   // for testing freshly every time
+  //  session.defaultSession.clearStorageData()   // for testing freshly every time
   const port = await new Promise((resolve, reject) => {
     getport(function (e, p) {
       if (e) throw e
@@ -176,7 +189,7 @@ app.whenReady().then(async () => {
     if (rpc.paths) {
       let diffusionbee;
       let standard;
-      for(let i=0; i<rpc.paths.length; i++) {
+      for (let i = 0; i < rpc.paths.length; i++) {
         let { file_path, root_path } = rpc.paths[i]
         let res;
         try {
@@ -213,7 +226,7 @@ app.whenReady().then(async () => {
       }
     } else if (rpc.root_path) {
       let filenames = await new fdir()
-        .glob("**/*.png")
+        .glob("**/*.png", "**/*.jpg", "**/*.jpeg")
         .withBasePath()
         .crawl(rpc.root_path)
         .withPromise()
@@ -226,7 +239,7 @@ app.whenReady().then(async () => {
           crawler = new Standard(rpc.root_path)
         }
         await crawler.init()
-        for(let i=0; i<filenames.length; i++) {
+        for (let i = 0; i < filenames.length; i++) {
           let filename = filenames[i]
           let stat = await fs.promises.stat(filename)
           let btime = new Date(stat.birthtime).getTime()
@@ -266,7 +279,7 @@ app.whenReady().then(async () => {
     }
   })
   ipcMain.handle('del', async (event, filenames) => {
-    for(filename of filenames) {
+    for (filename of filenames) {
       console.log("deleting", filename)
       await fs.promises.rm(filename).catch((e) => {
         console.log("error", e)
@@ -299,7 +312,7 @@ app.whenReady().then(async () => {
     if (rpc.cmd === "set" || rpc.cmd === "rm") {
       let res = await gm[rpc.cmd](...rpc.args)
       return res
-    } 
+    }
   })
   ipcMain.handle('open', async (event, file_path) => {
     await shell.showItemInFolder(file_path)
@@ -313,16 +326,116 @@ app.whenReady().then(async () => {
   ipcMain.handle('docs', async (event, file_path) => {
     let modal = new BrowserWindow({
       parent: mainWindow,
-//      modal: true
+      //      modal: true
     })
     modal.loadURL(`http://localhost:${port}/docs/doc.html`)
   })
   ipcMain.handle('debug', (event) => {
     mainWindow.webContents.openDevTools()
   })
+  const log = fastq.promise(async (msg) => {
+    mainWindow.webContents.send('caption_log', msg)
+  }, 1)
+  const finished = fastq.promise(async () => {
+    mainWindow.webContents.send('caption_finished')
+  }, 1)
+  let captionAborted = false
+  ipcMain.handle('captionBatch', async (event, args) => {
+    if (captionAborted)
+      return
+    if (args.length === 0) {
+      captionShell.end(async function (err) {
+        if (err) {
+          await log.push(`Error: ${JSON.stringify(err)}`)
+          throw err;
+        };
+        await finished.push()
+        console.log('finished');
+      });
+      return
+    }
+    let data = args.map((d) => {
+      return {
+        path: d.file_path,
+        cap: d.caption
+      }
+    })
+    data.forEach(async (item) => {
+      if (!captionShell.terminated && !captionAborted) {
+        try {
+          await captionShell.send(JSON.stringify(item))
+        } catch (e) {
+          console.log(`ERROR WRITING TO PYTHON: ${e}`)
+        }
+        //console.log(`SENT: ${JSON.stringify(item)}`);
 
+      }
+    })
+
+  })
+  ipcMain.handle('captionAbort', async (event) => {
+    if (captionShell.terminated || captionAborted)
+      return
+    captionAborted = true
+    captionShell.kill()
+    // captionShell.end(async function (err) {
+    //   if (err){
+    //     await log.push(`Error: ${JSON.stringify(err)}`)
+    //     throw err;
+    //   };
+    //   await finished.push()
+    //   console.log('finished');
+    // });
+  })
+  ipcMain.handle('caption', async (event, args) => {
+    captionAborted = false
+    let argv = []
+    for (const [key, value] of Object.entries(args)) {
+      if (value == false)
+        continue
+      if (typeof value === 'boolean') {
+        if (value)
+          argv.push(`--${key}`)
+      }
+      else if (typeof value === 'string') {
+        argv.push(`--${key}=${value}`)
+      }
+      else {
+        argv.push(`--${key}=${value}`)
+      }
+    }
+    let options = {
+      mode: 'text',
+      pythonOptions: ['-u'], // get print results in real-time
+      scriptPath: 'utils',
+      args: argv
+    };
+    captionShell = new PythonShell('caption.py', options);
+    captionShell.on('stderr', async function (message) {
+      console.log(message);
+      await log.push(`${message}`)
+
+    })
+    captionShell.on('message', async function (message) {
+      // TODO: Add new captions and write to disk
+      console.log(message);
+      if (!captionAborted)
+        await log.push(`${message}`)
+    })
+    captionShell.send("check")
+    await log.push("LOADING PYTHON... (This can take several minutes)")
+
+
+
+
+
+  })
+  PythonShell.run("config.py", { scriptPath: "utils" }, (err, results) => {
+    if (err) throw err;
+    console.log('results: %j', results);
+  })
   createWindow(port)
-//  synchronize()
+  //  synchronize()
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(port)
   })

@@ -54,6 +54,17 @@ const card = (meta, stripPunctuation) => {
       } else {
         el = ""
       }
+    } else if (attr.key === "caption" && attr.val) {
+      if (attr.val && typeof attr.val === "string" && attr.val.length > 0) {
+        let tokens = stripPunctuation(attr.val).split(/\s/)
+        let els = []
+        for(let token of tokens) {
+          els.push(`<span class='token' data-value="${token}">${token}</span>`)
+        }
+        el = els.join(" ")
+      } else {
+        el = ""
+      }
     } else if (attr.key === "file_path" && attr.val) {
       let tokens = attr.val.split(/[\/\\]/).filter(x => x.length > 0)
       let els = []
@@ -61,7 +72,7 @@ const card = (meta, stripPunctuation) => {
         els.push(`<span class='token' data-value="${token}">${token}</span>`)
       }
       el = els.join("/")
-    } else if (attr.key === "width" || attr.key === "height") {
+    } else if (attr.key === "width" || attr.key === "height" || attr.key === "has_caption" || attr.key === "captioned_by") {
       el = `<span class='token' data-value="${attr.val}">${attr.val}</span>`
     } else {
       el = attr.val

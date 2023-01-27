@@ -101,6 +101,7 @@ class Navbar {
       }
     })
 
+    
   }
   preprocess_query (phrase) {
     let fp_re = /file_path:"(.+)"/g
@@ -256,6 +257,7 @@ class Navbar {
       
 
   }
+
   notification(value) {
     let el = document.querySelector("#notification")
     el.classList.remove("hidden")

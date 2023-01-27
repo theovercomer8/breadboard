@@ -60,6 +60,7 @@ class GM {
       "xmp:width",
       "xmp:height",
       "dc:subject",
+      "xmp:caption",
     ]
 
     let mapping = {}
@@ -177,6 +178,7 @@ class GM {
         break;
       }
     }
+    let ex = await exifr.parse(buf, true)
     if (itxt) {
       let parsed = this.parser.parse(itxt.data)
       let gms = parsed["x:xmpmeta"]["rdf:RDF"]["rdf:Description"]["xmp:gm"]
@@ -196,6 +198,7 @@ class GM {
         "xmp:agent",
         "xmp:width",
         "xmp:height",
+        "xmp:caption",
       ]
 
       // xmp:prompt ~ xmp:agent
@@ -212,7 +215,7 @@ class GM {
       }
 
       // xmp:width xmp:height => directly get it from the file
-      let ex = await exifr.parse(buf, true)
+      
       if (ex) {
         res.push({
           key: "xmp:width",

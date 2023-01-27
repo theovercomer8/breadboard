@@ -238,6 +238,14 @@ class Parser {
       x["dc:subject"] = e.Subject
     }
 
+    if (options && options.caption) {
+      x["xmp:caption"] = options.caption
+    } else if (e.caption) {
+      x["xmp:caption"] = e.caption
+    } else if (e.Caption) {
+      x["xmp:caption"] = e.Caption
+    }
+    
     let keys = [
       "xmp:prompt",
       "xmp:sampler",
@@ -252,6 +260,7 @@ class Parser {
       "xmp:width",
       "xmp:height",
       "dc:subject",
+      "xmp:caption"
     ]
 
     let list = []
@@ -314,6 +323,30 @@ class Parser {
           o[item.key] = item.val
         }
       }
+    }
+    let stat = await fs.promises.stat(file_path)
+    let btime = new Date(stat.birthtime).getTime()
+    let mtime = new Date(stat.mtime).getTime()
+    return { ...o, root_path, file_path, mtime, btime }
+  }
+  async serializeJpeg(root_path, file_path) {
+    let info = await exifr.parse(file_path)
+    
+    let o = {}
+    if (info) {
+      try {
+        for(let key of Object.keys(info)) {
+          if (typeof info[key] !== "undefined") {
+            
+              o[key] = info[key]
+            
+          }
+        }
+      }
+      catch (e) {
+        console.log(e)
+      }
+      
     }
     let stat = await fs.promises.stat(file_path)
     let btime = new Date(stat.birthtime).getTime()

@@ -16,7 +16,6 @@ class Handler {
     });
 
     this.resized()
-
     document.querySelector(".container").addEventListener("click", async (e) => {
       e.preventDefault()
       e.stopPropagation()
@@ -126,7 +125,13 @@ class Handler {
             ]
           }
         }
-
+        if (key === "caption" || key === "has_caption" || key === "captioned_by") {
+          val = `"${val}"`
+          popup_items = [
+            `<span class='popup-link' data-key='${key}' data-value='${val}'>${val}</span>`,
+            `<span class='popup-link' data-key='-${key}' data-value='${val}'><i class="fa-solid fa-not-equal"></i> ${val}</span>`
+          ]
+        }
         if (key === "prompt") {
           popup_items = [
             `<span class='popup-link' data-key='${key}' data-value='${val}'>${val}</span>`,

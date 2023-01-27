@@ -46,8 +46,8 @@
       // init data db
       db = new Dexie("data")
       db.version(1).stores({
-        files: "file_path, agent, model_name, model_hash, root_path, prompt, btime, mtime, width, height, *tokens",
-      })
+        files: "file_path, agent, model_name, model_hash, root_path, prompt, btime, mtime, width, height, *tokens, has_caption, captioned_by, caption",
+    })
       // init user db
       user = new Dexie("user")
       user.version(1).stores({

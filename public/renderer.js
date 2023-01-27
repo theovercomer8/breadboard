@@ -7,6 +7,9 @@ class App {
     this.checkpoints = { }
     this.selection = new Selection(this)
     this.navbar = new Navbar(this);
+    this.captionwizard = new CaptionWizard(this);
+    this.currentCount = 0
+
     if (need_update) {
       this.navbar.notification(need_update)
     }
@@ -34,7 +37,7 @@ class App {
     // 1. The "data" DB only contains attributes that can be crawled from the files
     this.db = new Dexie("data")
     this.db.version(1).stores({
-      files: "file_path, agent, model_name, model_hash, root_path, prompt, btime, mtime, width, height, *tokens",
+      files: "file_path, agent, model_name, model_hash, root_path, prompt, btime, mtime, width, height, *tokens, has_caption, captioned_by, caption",
     })
 
     // 2. The "user" DB contains attributes that can NOT be crawled from the files
@@ -46,64 +49,64 @@ class App {
       favorites: "query, global"
     })
 
-    let legacy_exists = await Dexie.exists("breadboard")
-    if (legacy_exists) {
-      // should only trigger once when upgrading
+    // let legacy_exists = await Dexie.exists("breadboard")
+    // if (legacy_exists) {
+    //   // should only trigger once when upgrading
 
-      // must reindex after updating => all the files must be re-indexed
-      this.sync_mode = "reindex"
+    //   // must reindex after updating => all the files must be re-indexed
+    //   this.sync_mode = "reindex"
 
-      // if legacy db exists, delete it
-      let legacy_db = new Dexie("breadboard")
-      legacy_db.version(1).stores({
-        files: "file_path, agent, model_name, root_path, prompt, btime, mtime, width, height, *tokens",
-        folders: "&name",
-        checkpoints: "&root_path, btime",
-        settings: "key, val",
-        favorites: "query"
-      })
+    //   // if legacy db exists, delete it
+    //   let legacy_db = new Dexie("breadboard")
+    //   legacy_db.version(1).stores({
+    //     files: "file_path, agent, model_name, root_path, prompt, btime, mtime, width, height, *tokens",
+    //     folders: "&name",
+    //     checkpoints: "&root_path, btime",
+    //     settings: "key, val",
+    //     favorites: "query"
+    //   })
       
-      let previous_version
-      try {
-        let ver = await legacy_db.settings.where({ key: "version" }).first()
-        if (ver) {
-          previous_version = ver.val
-        } else {
-          previous_version = "0.0.0"
-        }
-      } catch (e) {
-        previous_version = "0.0.0"
-      }
+    //   let previous_version
+    //   try {
+    //     let ver = await legacy_db.settings.where({ key: "version" }).first()
+    //     if (ver) {
+    //       previous_version = ver.val
+    //     } else {
+    //       previous_version = "0.0.0"
+    //     }
+    //   } catch (e) {
+    //     previous_version = "0.0.0"
+    //   }
 
-      if (previous_version === "0.0.0") {
-        // if it's 0.0.0
-        // Just reset everything and recrawl
-        let folders = await legacy_db.folders.toArray()
-        await this.user.folders.bulkPut(folders)
-      } else {
-        // if it's 0.1.0 or 0.2.0
-        // No need to declare version. Just read from the old DB and migrate to the "data" and "user" dbs
-        // 3. Migrate the "folders", "checkpoints", "settings", "favorites" table to the user table
-        let files = await legacy_db.files.toArray()
-        let folders = await legacy_db.folders.toArray()
-        let checkpoints = await legacy_db.checkpoints.toArray()
-        let settings = await legacy_db.settings.toArray()
-        let favorites = await legacy_db.favorites.toArray()
-        // Only replicate folders and settings,  do NOT replicate checkpoint => checkpoint must be null when reindexing
-        await this.user.folders.bulkPut(folders)
-        await this.user.settings.bulkPut(settings)
+    //   if (previous_version === "0.0.0") {
+    //     // if it's 0.0.0
+    //     // Just reset everything and recrawl
+    //     let folders = await legacy_db.folders.toArray()
+    //     await this.user.folders.bulkPut(folders)
+    //   } else {
+    //     // if it's 0.1.0 or 0.2.0
+    //     // No need to declare version. Just read from the old DB and migrate to the "data" and "user" dbs
+    //     // 3. Migrate the "folders", "checkpoints", "settings", "favorites" table to the user table
+    //     let files = await legacy_db.files.toArray()
+    //     let folders = await legacy_db.folders.toArray()
+    //     let checkpoints = await legacy_db.checkpoints.toArray()
+    //     let settings = await legacy_db.settings.toArray()
+    //     let favorites = await legacy_db.favorites.toArray()
+    //     // Only replicate folders and settings,  do NOT replicate checkpoint => checkpoint must be null when reindexing
+    //     await this.user.folders.bulkPut(folders)
+    //     await this.user.settings.bulkPut(settings)
 
-        let fav = favorites.map((f) => {
-          return {
-            query: f.query,
-            global: 0
-          }
-        })
-        await this.user.favorites.bulkPut(fav)
-      }
-      await legacy_db.delete()
+    //     let fav = favorites.map((f) => {
+    //       return {
+    //         query: f.query,
+    //         global: 0
+    //       }
+    //     })
+    //     await this.user.favorites.bulkPut(fav)
+    //   }
+    //   await legacy_db.delete()
 
-    }
+    // }
 
     // Set up db with defaults and version
     await this.user.settings.put({ key: "version", val: VERSION })
@@ -341,6 +344,7 @@ class App {
   }
   async fill ({ count, res }) {
     let items = res
+    this.currentCount = count
     document.querySelector(".content-info").innerHTML = `<i class="fa-solid fa-check"></i> ${count}`
     document.querySelector(".status").innerHTML = "Loading..."
     let data = items.map((item) => {

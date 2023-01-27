@@ -50,5 +50,17 @@ contextBridge.exposeInMainWorld('electronAPI',{
   },
   debug: () => {
     ipcRenderer.invoke("debug")
-  }
+  },
+  caption: (args) => {
+    ipcRenderer.invoke('caption',args)
+  },
+  captionBatch: (args) => {
+    ipcRenderer.invoke('captionBatch',args)
+  },
+  captionAbort: () => {
+    ipcRenderer.invoke('captionAbort')
+  },
+  onCaptionLog: (callback) => ipcRenderer.on('caption_log', callback),
+  onCaptionFinished: (callback) => ipcRenderer.on('caption_finished', callback),
+
 })

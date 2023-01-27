@@ -10,7 +10,7 @@ importScripts("./dexie.js")
 var db = new Dexie("data")
 var user = new Dexie("user")
 db.version(1).stores({
-  files: "file_path, agent, model_name, model_hash, root_path, prompt, btime, mtime, width, height, *tokens",
+  files: "file_path, agent, model_name, model_hash, root_path, prompt, btime, mtime, width, height, *tokens, has_caption, captioned_by, caption",
 })
 user.version(1).stores({
   folders: "&name",
@@ -117,6 +117,25 @@ function applyFilter(q, filters) {
         q = q.and((item) => {
           return new RegExp(esc(filter.file_path), "i").test(item.file_path)
         })
+      } else if (filter.has_caption === "true") {
+        q = q.and((item) => {
+
+          return item.has_caption === "true" || (typeof item.has_caption === "boolean" && item.has_caption)
+        })
+      } else if (filter.has_caption === "false") {
+        q = q.and((item) => {
+
+          return item.has_caption === "false" || typeof item.has_caption === "undefined" || (typeof item.has_caption === "boolean" && !item.has_caption)
+        })
+      } else if (filter.captioned_by) {
+        q = q.and((item) => {
+
+          return item.captioned_by === filter.captioned_by
+        })
+      } else if (filter.caption) {
+        q = q.and((item) => {
+          return new RegExp(esc(filter.caption), "i").test(item.caption)
+        })
       } else if (filter["-file_path"]) {
         q = q.and((item) => {
           return !new RegExp(esc(filter["-file_path"]), "i").test(item.file_path)
@@ -128,7 +147,7 @@ function applyFilter(q, filters) {
 }
 
 const preprocess_query = (phrase) => {
-  let complex_re = /(-?(file_path|tag)?:)"([^"]+)"/g
+  let complex_re = /(-?(file_path|tag|caption|has_caption|captioned_by)?:)"([^"]+)"/g
   let mn_re = /model_name:"([^"]+)"/g
   let tag_re = /(-?(tag)?:)"([^"]+)"/g
   let agent_re = /agent:"([^"]+)"/g
@@ -149,7 +168,7 @@ const preprocess_query = (phrase) => {
       break;
     }
   }
-  let complex_re2 = /-?(file_path|tag)?:"([^"]+)"/
+  let complex_re2 = /-?(file_path|tag|caption|has_caption|captioned_by)?:"([^"]+)"/
   for(let placeholder of to_replace) {
     phrase = phrase.replace(complex_re2, placeholder)
   }
@@ -188,6 +207,42 @@ const preprocess_query = (phrase) => {
     } else if (prefix.startsWith("-file_path:")) {
       if (complex_captured[prefix]) {
         converted.push("-file_path:" + prefix.replace(/-file_path:[0-9]+/, complex_captured[prefix]))
+      } else {
+        converted.push(prefix)
+      }
+    } else if (prefix.startsWith("caption:")) {
+      if (complex_captured[prefix]) {
+        converted.push("caption:" + prefix.replace(/caption:[0-9]+/, complex_captured[prefix]))
+      } else {
+        converted.push(prefix)
+      }
+    } else if (prefix.startsWith("-caption:")) {
+      if (complex_captured[prefix]) {
+        converted.push("-caption:" + prefix.replace(/-caption:[0-9]+/, complex_captured[prefix]))
+      } else {
+        converted.push(prefix)
+      }
+    } else if (prefix.startsWith("has_caption:")) {
+      if (complex_captured[prefix]) {
+        converted.push("has_caption:" + prefix.replace(/has_caption:[0-9]+/, complex_captured[prefix]))
+      } else {
+        converted.push(prefix)
+      }
+    } else if (prefix.startsWith("-has_caption:")) {
+      if (complex_captured[prefix]) {
+        converted.push("-has_caption:" + prefix.replace(/-has_caption:[0-9]+/, complex_captured[prefix]))
+      } else {
+        converted.push(prefix)
+      }
+    } else if (prefix.startsWith("captioned_by:")) {
+      if (complex_captured[prefix]) {
+        converted.push("captioned_by:" + prefix.replace(/has_caption:[0-9]+/, complex_captured[prefix]))
+      } else {
+        converted.push(prefix)
+      }
+    } else if (prefix.startsWith("-captioned_by:")) {
+      if (complex_captured[prefix]) {
+        converted.push("-captioned_by:" + prefix.replace(/-captioned_by:[0-9]+/, complex_captured[prefix]))
       } else {
         converted.push(prefix)
       }
@@ -249,6 +304,18 @@ function find (phrase) {
     } else if (prefix.startsWith("model_name:")) {
       filters.push({
         model_name: prefix.replace("model_name:", "").trim()
+      })
+    } else if (prefix.startsWith("caption:")) {
+      filters.push({
+        caption: prefix.replace("caption:", "").trim()
+      })
+    } else if (prefix.startsWith("has_caption:")) {
+      filters.push({
+        has_caption: prefix.replace("has_caption:", "").trim()
+      })
+    } else if (prefix.startsWith("captioned_by:")) {
+      filters.push({
+        captioned_by: prefix.replace("captioned_by:", "").trim()
       })
     } else if (prefix.startsWith("model_hash:")) {
       filters.push({
