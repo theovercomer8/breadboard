@@ -343,6 +343,8 @@ app.whenReady().then(async () => {
   ipcMain.handle('captionBatch', async (event, args) => {
     if (captionAborted)
       return
+    if (typeof args === 'undefined')
+      return
     if (args.length === 0) {
       captionShell.end(async function (err) {
         if (err) {
