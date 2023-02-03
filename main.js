@@ -432,10 +432,7 @@ app.whenReady().then(async () => {
 
 
   })
-  PythonShell.run("config.py", { scriptPath: "utils" }, (err, results) => {
-    if (err) throw err;
-    console.log('results: %j', results);
-  })
+ 
   createWindow(port)
   //  synchronize()
   app.on('activate', function () {
