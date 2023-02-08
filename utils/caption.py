@@ -97,7 +97,7 @@ class Config:
     blip_offload: bool = False
 
     # clip settings
-    clip_model_name: str = 'ViT-H-14/laion2b_s32b_b79k'
+    clip_model_name: str = 'coca_ViT-L-14/mscoco_finetuned_laion2B-s13B-b90k'
     clip_model_path: str = None
 
     # interrogator settings
