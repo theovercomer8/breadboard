@@ -111,7 +111,7 @@ class Config:
 class Interrogator():
     def __init__(self, config: Config):
         self.config = config
-        self.device = pytgitdevice
+        self.device = device
 
         if blip_pass:
             if config.blip_model is None:
